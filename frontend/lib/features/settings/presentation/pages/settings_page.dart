@@ -168,12 +168,22 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
           const SizedBox(height: 12),
 
           _SettingTile(
+            icon: Icons.help_outline,
+            title: 'App Guide',
+            subtitle: 'Learn how every section works',
+            color: AppColors.primary,
+            trailing:
+                const Icon(Icons.chevron_right, color: AppColors.textSecondary),
+            onTap: () => context.push('/guide'),
+          ).animate().fadeIn(delay: 580.ms),
+
+          _SettingTile(
             icon: Icons.info_outline,
             title: 'App Version',
             subtitle: 'CyberVerse v1.0.0',
             color: AppColors.textSecondary,
             trailing: const SizedBox.shrink(),
-          ).animate().fadeIn(delay: 600.ms),
+          ).animate().fadeIn(delay: 620.ms),
 
           const SizedBox(height: 24),
 

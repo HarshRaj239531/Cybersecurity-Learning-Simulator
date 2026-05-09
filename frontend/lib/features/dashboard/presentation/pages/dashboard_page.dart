@@ -28,6 +28,11 @@ class DashboardPage extends ConsumerWidget {
         ),
         actions: [
           IconButton(
+            icon: const Icon(Icons.help_outline, color: AppColors.textSecondary),
+            tooltip: 'App Guide',
+            onPressed: () => context.push('/guide'),
+          ),
+          IconButton(
             icon: const Icon(Icons.leaderboard_outlined, color: AppColors.accent),
             onPressed: () => context.push('/leaderboard'),
           ),

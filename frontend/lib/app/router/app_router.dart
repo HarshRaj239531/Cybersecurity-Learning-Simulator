@@ -18,6 +18,7 @@ import '../../features/leaderboard/presentation/pages/leaderboard_page.dart';
 import '../../features/settings/presentation/pages/settings_page.dart';
 import '../../features/terminal/presentation/pages/terminal_page.dart';
 import '../../features/achievements/presentation/pages/achievements_page.dart';
+import '../../features/guide/presentation/pages/app_guide_page.dart';
 import '../../app/theme/app_colors.dart';
 
 final _rootKey = GlobalKey<NavigatorState>();
@@ -121,6 +122,11 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/achievements',
         parentNavigatorKey: _rootKey,
         builder: (_, __) => const AchievementsPage(),
+      ),
+      GoRoute(
+        path: '/guide',
+        parentNavigatorKey: _rootKey,
+        builder: (_, __) => const AppGuidePage(),
       ),
     ],
   );
