@@ -4,6 +4,9 @@ const pg = require('pg');
 
 module.exports = defineConfig({
   earlyAccess: true,
+  datasource: {
+    url: process.env.DATABASE_URL,
+  },
   migrate: {
     adapter() {
       const pool = new pg.Pool({ connectionString: process.env.DATABASE_URL });
