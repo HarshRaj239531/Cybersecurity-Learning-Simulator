@@ -3,12 +3,17 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../app/theme/app_colors.dart';
 import '../../../../shared/components/shared_components.dart';
+import '../../../../shared/providers/app_providers.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../providers/profile_provider.dart';
 
-class ProfilePage extends StatelessWidget {
+class ProfilePage extends ConsumerWidget {
   const ProfilePage({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final profileAsync = ref.watch(profileProvider);
+    
     return Scaffold(
       appBar: AppBar(
         title: const Text('AGENT PROFILE', style: TextStyle(letterSpacing: 2)),
@@ -19,187 +24,205 @@ class ProfilePage extends StatelessWidget {
           ),
         ],
       ),
-      body: SingleChildScrollView(
-        child: Column(
-          children: [
-            // Profile Header
-            Container(
-              padding: const EdgeInsets.all(24),
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [
-                    AppColors.primary.withOpacity(0.1),
-                    Colors.transparent,
-                  ],
-                ),
-              ),
-              child: Column(
-                children: [
-                  const HackerAvatar(radius: 44, initials: 'NH', color: AppColors.primary),
-                  const SizedBox(height: 16),
-                  const Text('NEO_HACKER',
-                      style: TextStyle(
-                          fontSize: 22,
-                          fontWeight: FontWeight.bold,
-                          letterSpacing: 2)),
-                  const SizedBox(height: 4),
-                  const Text('Level 12 · Security Analyst',
-                      style: TextStyle(
-                          color: AppColors.textSecondary, fontSize: 13)),
-                  const SizedBox(height: 4),
-                  const Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(Icons.local_fire_department,
-                          color: Colors.orange, size: 16),
-                      SizedBox(width: 4),
-                      Text('7 day streak',
-                          style: TextStyle(
-                              color: Colors.orange, fontSize: 12)),
-                    ],
-                  ),
-                  const SizedBox(height: 20),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                    children: [
-                      _StatItem(label: 'LABS', value: '24', color: AppColors.primary),
-                      _Divider(),
-                      _StatItem(label: 'CTF SOLVED', value: '5', color: AppColors.secondary),
-                      _Divider(),
-                      _StatItem(label: 'GLOBAL RANK', value: '#42', color: AppColors.accent),
-                      _Divider(),
-                      _StatItem(label: 'XP', value: '2,450', color: Colors.orange),
-                    ],
-                  ),
-                ],
-              ),
-            ).animate().fadeIn(),
+      body: profileAsync.when(
+        data: (profile) {
+          final username = profile['username'] ?? 'AGENT';
+          final xp = profile['xp'] ?? 0;
+          final level = (xp / 500).floor() + 1;
+          final nextLevelXp = level * 500;
+          final prevLevelXp = (level - 1) * 500;
+          final progress = (xp - prevLevelXp) / (nextLevelXp - prevLevelXp);
+          final streak = profile['streak'] ?? 0;
 
-            // XP Progress Bar
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: CyberCard(
-                borderColor: AppColors.primary.withOpacity(0.3),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text('XP PROGRESS',
-                            style: TextStyle(
-                                color: AppColors.textSecondary,
-                                fontSize: 11,
-                                letterSpacing: 2)),
-                        Text('2,450 / 6,000',
-                            style: TextStyle(
-                                color: AppColors.primary, fontSize: 12)),
+          return SingleChildScrollView(
+            child: Column(
+              children: [
+                // Profile Header
+                Container(
+                  padding: const EdgeInsets.all(24),
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [
+                        AppColors.primary.withOpacity(0.1),
+                        Colors.transparent,
                       ],
                     ),
-                    const SizedBox(height: 10),
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(4),
-                      child: LinearProgressIndicator(
-                        value: 2450 / 6000,
-                        backgroundColor: AppColors.primary.withOpacity(0.1),
-                        color: AppColors.primary,
-                        minHeight: 8,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    const Text('Level 13 requires 3,550 more XP',
-                        style: TextStyle(
-                            color: AppColors.textHint, fontSize: 11)),
-                  ],
-                ),
-              ),
-            ).animate().fadeIn(delay: 100.ms),
-
-            const SizedBox(height: 20),
-
-            // Badges
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: Column(
-                children: [
-                  const SectionHeader(title: 'EARNED BADGES', trailing: 'VIEW ALL'),
-                  const SizedBox(height: 12),
-                  GridView.count(
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    crossAxisCount: 4,
-                    mainAxisSpacing: 12,
-                    crossAxisSpacing: 12,
+                  ),
+                  child: Column(
                     children: [
-                      ..._badges.map((b) => _BadgeItem(badge: b)),
-                      ...List.generate(
-                          8 - _badges.length, (_) => const _LockedBadge()),
+                      HackerAvatar(
+                        radius: 44,
+                        initials: username.substring(0, 1).toUpperCase(),
+                        color: AppColors.primary,
+                      ),
+                      const SizedBox(height: 16),
+                      Text(username.toUpperCase(),
+                          style: const TextStyle(
+                              fontSize: 22,
+                              fontWeight: FontWeight.bold,
+                              letterSpacing: 2)),
+                      const SizedBox(height: 4),
+                      Text('Level $level · Security Agent',
+                          style: const TextStyle(
+                              color: AppColors.textSecondary, fontSize: 13)),
+                      const SizedBox(height: 4),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const Icon(Icons.local_fire_department,
+                              color: Colors.orange, size: 16),
+                          const SizedBox(width: 4),
+                          Text('$streak day streak',
+                              style: const TextStyle(
+                                  color: Colors.orange, fontSize: 12)),
+                        ],
+                      ),
+                      const SizedBox(height: 20),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                        children: [
+                          _StatItem(label: 'LABS', value: '${(profile['progress'] as List?)?.length ?? 0}', color: AppColors.primary),
+                          const _Divider(),
+                          _StatItem(label: 'CTF SOLVED', value: '${(profile['challengeProgress'] as List?)?.length ?? 0}', color: AppColors.secondary),
+                          const _Divider(),
+                          _StatItem(label: 'BADGES', value: '${(profile['userAchievements'] as List?)?.length ?? 0}', color: AppColors.accent),
+                          const _Divider(),
+                          _StatItem(label: 'XP', value: '$xp', color: Colors.orange),
+                        ],
+                      ),
                     ],
                   ),
-                ],
-              ),
-            ).animate().fadeIn(delay: 200.ms),
+                ).animate().fadeIn(),
 
-            const SizedBox(height: 20),
-
-            // Completed Labs
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: Column(
-                children: [
-                  const SectionHeader(title: 'COMPLETED LABS'),
-                  const SizedBox(height: 12),
-                  ..._completedLabs.asMap().entries.map((e) {
-                    final lab = e.value;
-                    return Padding(
-                      padding: const EdgeInsets.only(bottom: 10),
-                      child: CyberCard(
-                        borderColor: AppColors.primary.withOpacity(0.2),
-                        child: Row(
+                // XP Progress Bar
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: CyberCard(
+                    borderColor: AppColors.primary.withOpacity(0.3),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            const Icon(Icons.check_circle,
-                                color: AppColors.primary, size: 20),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: Text(lab['title'] as String,
-                                  style: const TextStyle(
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 13)),
-                            ),
-                            Text(lab['xp'] as String,
+                            const Text('XP PROGRESS',
+                                style: TextStyle(
+                                    color: AppColors.textSecondary,
+                                    fontSize: 11,
+                                    letterSpacing: 2)),
+                            Text('$xp / $nextLevelXp',
                                 style: const TextStyle(
-                                    color: AppColors.primary,
-                                    fontSize: 12)),
+                                    color: AppColors.primary, fontSize: 12)),
                           ],
                         ),
-                      ).animate().fadeIn(
-                          delay: Duration(milliseconds: e.key * 80)),
-                    );
-                  }),
-                ],
-              ),
+                        const SizedBox(height: 10),
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(4),
+                          child: LinearProgressIndicator(
+                            value: progress,
+                            backgroundColor: AppColors.primary.withOpacity(0.1),
+                            color: AppColors.primary,
+                            minHeight: 8,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Text('Level ${level + 1} requires ${nextLevelXp - xp} more XP',
+                            style: const TextStyle(
+                                color: AppColors.textHint, fontSize: 11)),
+                      ],
+                    ),
+                  ),
+                ).animate().fadeIn(delay: 100.ms),
+
+                const SizedBox(height: 20),
+
+                // Badges
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: Column(
+                    children: [
+                      const SectionHeader(title: 'EARNED BADGES', trailing: 'VIEW ALL'),
+                      const SizedBox(height: 12),
+                      GridView.count(
+                        shrinkWrap: true,
+                        physics: const NeverScrollableScrollPhysics(),
+                        crossAxisCount: 4,
+                        mainAxisSpacing: 12,
+                        crossAxisSpacing: 12,
+                        children: [
+                          ..._badges.map((b) => _BadgeItem(badge: b)),
+                          ...List.generate(
+                              8 - _badges.length, (_) => const _LockedBadge()),
+                        ],
+                      ),
+                    ],
+                  ),
+                ).animate().fadeIn(delay: 200.ms),
+
+                const SizedBox(height: 20),
+
+                // Completed Labs
+                if ((profile['progress'] as List?)?.isNotEmpty ?? false)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: Column(
+                      children: [
+                        const SectionHeader(title: 'COMPLETED LABS'),
+                        const SizedBox(height: 12),
+                        ...((profile['progress'] as List).map((p) {
+                          final lab = p['lab'];
+                          return Padding(
+                            padding: const EdgeInsets.only(bottom: 10),
+                            child: CyberCard(
+                              borderColor: AppColors.primary.withOpacity(0.2),
+                              child: Row(
+                                children: [
+                                  const Icon(Icons.check_circle,
+                                      color: AppColors.primary, size: 20),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: Text(lab['title'] as String,
+                                        style: const TextStyle(
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 13)),
+                                  ),
+                                  Text('+${lab['xpReward']} XP',
+                                      style: const TextStyle(
+                                          color: AppColors.primary,
+                                          fontSize: 12)),
+                                ],
+                              ),
+                            ),
+                          );
+                        })),
+                      ],
+                    ),
+                  ),
+
+                const SizedBox(height: 20),
+
+                // Logout
+                Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: DangerButton(
+                    text: 'LOGOUT',
+                    onPressed: () => _showLogoutDialog(context, ref),
+                  ),
+                ).animate().fadeIn(delay: 400.ms),
+                const SizedBox(height: 32),
+              ],
             ),
-
-            const SizedBox(height: 20),
-
-            // Logout
-            Padding(
-              padding: const EdgeInsets.all(16),
-              child: DangerButton(
-                text: 'LOGOUT',
-                onPressed: () => _showLogoutDialog(context),
-              ),
-            ).animate().fadeIn(delay: 400.ms),
-            const SizedBox(height: 32),
-          ],
-        ),
+          );
+        },
+        loading: () => const Center(child: CircularProgressIndicator()),
+        error: (err, _) => Center(child: Text('Error: $err')),
       ),
     );
   }
 
-  void _showLogoutDialog(BuildContext context) {
+  void _showLogoutDialog(BuildContext context, WidgetRef ref) {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -213,9 +236,12 @@ class ProfilePage extends StatelessWidget {
             child: const Text('CANCEL'),
           ),
           TextButton(
-            onPressed: () {
-              Navigator.pop(ctx);
-              context.go('/login');
+            onPressed: () async {
+              await ref.read(authProvider.notifier).logout();
+              if (context.mounted) {
+                Navigator.pop(ctx);
+                context.go('/login');
+              }
             },
             child: const Text('LOGOUT',
                 style: TextStyle(color: AppColors.error)),
@@ -231,19 +257,13 @@ class ProfilePage extends StatelessWidget {
     {'icon': Icons.local_fire_department, 'label': '7 Day Streak', 'color': Colors.orange},
     {'icon': Icons.emoji_events, 'label': 'CTF Winner', 'color': AppColors.secondary},
   ];
-
-  static const List<Map<String, dynamic>> _completedLabs = [
-    {'title': 'SQL Injection: Level 1', 'xp': '+250 XP'},
-    {'title': 'XSS Basics', 'xp': '+250 XP'},
-  ];
 }
 
 class _StatItem extends StatelessWidget {
   final String label, value;
   final Color color;
 
-  const _StatItem(
-      {required this.label, required this.value, required this.color});
+  const _StatItem({required this.label, required this.value, required this.color});
 
   @override
   Widget build(BuildContext context) {
@@ -251,24 +271,26 @@ class _StatItem extends StatelessWidget {
       children: [
         Text(value,
             style: TextStyle(
-                fontSize: 18, fontWeight: FontWeight.bold, color: color)),
+                color: color, fontSize: 18, fontWeight: FontWeight.bold)),
+        const SizedBox(height: 4),
         Text(label,
             style: const TextStyle(
-                color: AppColors.textSecondary,
-                fontSize: 9,
-                letterSpacing: 1)),
+                color: AppColors.textHint, fontSize: 9, letterSpacing: 1)),
       ],
     );
   }
 }
 
 class _Divider extends StatelessWidget {
+  const _Divider();
+
   @override
   Widget build(BuildContext context) {
     return Container(
-        height: 32,
-        width: 1,
-        color: const Color(0xFF333333));
+      height: 24,
+      width: 1,
+      color: Colors.white10,
+    );
   }
 }
 
@@ -279,27 +301,22 @@ class _BadgeItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = badge['color'] as Color;
     return Column(
-      mainAxisSize: MainAxisSize.min,
       children: [
         Container(
-          width: 52,
-          height: 52,
+          padding: const EdgeInsets.all(10),
           decoration: BoxDecoration(
-            color: color.withOpacity(0.1),
+            color: (badge['color'] as Color).withOpacity(0.1),
             shape: BoxShape.circle,
-            border: Border.all(color: color.withOpacity(0.5), width: 2),
-            boxShadow: [BoxShadow(color: color.withOpacity(0.2), blurRadius: 8)],
+            border: Border.all(color: (badge['color'] as Color).withOpacity(0.3)),
           ),
-          child: Icon(badge['icon'] as IconData, color: color, size: 24),
+          child: Icon(badge['icon'] as IconData,
+              color: badge['color'] as Color, size: 20),
         ),
-        const SizedBox(height: 4),
+        const SizedBox(height: 6),
         Text(badge['label'] as String,
             textAlign: TextAlign.center,
-            style: const TextStyle(fontSize: 9, color: AppColors.textSecondary),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis),
+            style: const TextStyle(fontSize: 9, color: AppColors.textSecondary)),
       ],
     );
   }
@@ -311,22 +328,19 @@ class _LockedBadge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Column(
-      mainAxisSize: MainAxisSize.min,
       children: [
         Container(
-          width: 52,
-          height: 52,
+          padding: const EdgeInsets.all(10),
           decoration: BoxDecoration(
-            color: const Color(0xFF1A1A1A),
+            color: Colors.white.withOpacity(0.03),
             shape: BoxShape.circle,
-            border: Border.all(color: const Color(0xFF333333)),
+            border: Border.all(color: Colors.white12),
           ),
-          child: const Icon(Icons.lock_outline,
-              color: Color(0xFF333333), size: 22),
+          child: const Icon(Icons.lock_outline, color: Colors.white24, size: 20),
         ),
-        const SizedBox(height: 4),
-        const Text('Locked',
-            style: TextStyle(fontSize: 9, color: Color(0xFF555555))),
+        const SizedBox(height: 6),
+        const Text('LOCKED',
+            style: TextStyle(fontSize: 9, color: Colors.white10)),
       ],
     );
   }

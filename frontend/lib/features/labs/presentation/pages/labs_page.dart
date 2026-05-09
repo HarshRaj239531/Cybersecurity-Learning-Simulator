@@ -3,15 +3,17 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../app/theme/app_colors.dart';
 import '../../../../shared/components/shared_components.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../providers/labs_provider.dart';
 
-class LabsPage extends StatefulWidget {
+class LabsPage extends ConsumerStatefulWidget {
   const LabsPage({super.key});
 
   @override
-  State<LabsPage> createState() => _LabsPageState();
+  ConsumerState<LabsPage> createState() => _LabsPageState();
 }
 
-class _LabsPageState extends State<LabsPage>
+class _LabsPageState extends ConsumerState<LabsPage>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
   String _searchQuery = '';
@@ -118,8 +120,8 @@ class _LabsPageState extends State<LabsPage>
   final List<String> _categories = ['All', 'Web', 'Network', 'Auth', 'Crypto'];
   String _selectedCategory = 'All';
 
-  List<Map<String, dynamic>> get _filteredLabs {
-    return _labs.where((lab) {
+  List<dynamic> _getFilteredLabs(List<dynamic> labs) {
+    return labs.where((lab) {
       final matchesSearch = _searchQuery.isEmpty ||
           lab['title'].toString().toLowerCase().contains(_searchQuery.toLowerCase());
       final matchesCategory =
@@ -224,45 +226,56 @@ class _LabsPageState extends State<LabsPage>
             ),
           ),
           Expanded(
-            child: TabBarView(
-              controller: _tabController,
-              children: [
-                // All Labs
-                _filteredLabs.isEmpty
-                    ? const Center(
-                        child: Text('No labs found',
-                            style: TextStyle(color: AppColors.textSecondary)))
-                    : ListView.separated(
-                        padding: const EdgeInsets.symmetric(horizontal: 16),
-                        itemCount: _filteredLabs.length,
-                        separatorBuilder: (_, __) => const SizedBox(height: 12),
-                        itemBuilder: (context, i) {
-                          return _LabCard(
-                            lab: _filteredLabs[i],
-                            onTap: () {
-                              final route = _filteredLabs[i]['route'] as String;
-                              context.push(route);
+            child: ref.watch(labsProvider).when(
+              data: (labs) {
+                final filteredLabs = _getFilteredLabs(labs);
+                return TabBarView(
+                  controller: _tabController,
+                  children: [
+                    // All Labs
+                    filteredLabs.isEmpty
+                        ? const Center(
+                            child: Text('No labs found',
+                                style: TextStyle(color: AppColors.textSecondary)))
+                        : ListView.separated(
+                            padding: const EdgeInsets.symmetric(horizontal: 16),
+                            itemCount: filteredLabs.length,
+                            separatorBuilder: (_, __) => const SizedBox(height: 12),
+                            itemBuilder: (context, i) {
+                              final lab = filteredLabs[i];
+                              return _LabCard(
+                                lab: lab,
+                                onTap: () {
+                                  // Map backend ID to existing frontend routes for now
+                                  String route = '/lab/sql-injection';
+                                  if (lab['title'].toString().contains('XSS')) route = '/lab/xss';
+                                  if (lab['title'].toString().contains('JWT')) route = '/lab/jwt';
+                                  context.push(route);
+                                },
+                              ).animate().fadeIn(
+                                  delay: Duration(milliseconds: i * 60));
                             },
-                          ).animate().fadeIn(
-                              delay: Duration(milliseconds: i * 60));
-                        },
-                      ),
-                // My Progress
-                ListView.separated(
-                  padding: const EdgeInsets.all(16),
-                  itemCount: _labs.where((l) => (l['progress'] as double) > 0).length,
-                  separatorBuilder: (_, __) => const SizedBox(height: 12),
-                  itemBuilder: (context, i) {
-                    final inProgress = _labs
-                        .where((l) => (l['progress'] as double) > 0)
-                        .toList();
-                    return _LabCard(
-                      lab: inProgress[i],
-                      onTap: () => context.push(inProgress[i]['route']),
-                    );
-                  },
-                ),
-              ],
+                          ),
+                    // My Progress (Filter completed or in-progress from the same list)
+                    ListView.separated(
+                      padding: const EdgeInsets.all(16),
+                      itemCount: labs.where((l) => (l['progress'] ?? 0) > 0).length,
+                      separatorBuilder: (_, __) => const SizedBox(height: 12),
+                      itemBuilder: (context, i) {
+                        final inProgress = labs
+                            .where((l) => (l['progress'] ?? 0) > 0)
+                            .toList();
+                        return _LabCard(
+                          lab: inProgress[i],
+                          onTap: () => context.push('/lab/sql-injection'),
+                        );
+                      },
+                    ),
+                  ],
+                );
+              },
+              loading: () => const Center(child: CircularProgressIndicator()),
+              error: (err, stack) => Center(child: Text('Error: $err')),
             ),
           ),
         ],
@@ -292,8 +305,8 @@ class _LabCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final progress = lab['progress'] as double;
-    final color = lab['color'] as Color;
+    final progress = (lab['progress'] ?? 0).toDouble();
+    final color = lab['color'] is Color ? lab['color'] as Color : AppColors.primary;
 
     return CyberCard(
       onTap: onTap,
@@ -306,7 +319,7 @@ class _LabCard extends StatelessWidget {
               color: color.withOpacity(0.1),
               borderRadius: BorderRadius.circular(8),
             ),
-            child: Icon(lab['icon'] as IconData, color: color, size: 26),
+            child: Icon((lab['icon'] is IconData ? lab['icon'] : Icons.terminal) as IconData, color: color, size: 26),
           ),
           const SizedBox(width: 14),
           Expanded(
@@ -338,7 +351,7 @@ class _LabCard extends StatelessWidget {
                   ],
                 ),
                 const SizedBox(height: 4),
-                Text(lab['subtitle'] as String,
+                Text(lab['description'] ?? lab['subtitle'] ?? '',
                     style: const TextStyle(
                         color: AppColors.textSecondary, fontSize: 12)),
                 if (progress > 0) ...[
@@ -376,7 +389,7 @@ class _LabCard extends StatelessWidget {
                 size: 24,
               ),
               const SizedBox(height: 4),
-              Text('+${lab['xp']} XP',
+              Text('+${lab['xpReward'] ?? lab['xp'] ?? 0} XP',
                   style: const TextStyle(
                       color: AppColors.primary, fontSize: 10)),
             ],

@@ -7,6 +7,12 @@ import pino from "pino-http";
 import swaggerUi from "swagger-ui-express";
 import { swaggerSpec } from "./lib/swagger";
 import authRoutes from "./modules/auth/auth.routes";
+import labRoutes from "./modules/labs/labs.routes";
+import ctfRoutes from "./modules/ctf/ctf.routes";
+import leaderboardRoutes from "./modules/leaderboard/leaderboard.routes";
+import achievementRoutes from "./modules/achievements/achievements.routes";
+import mentorRoutes from "./modules/mentor_ai/mentor_ai.routes";
+import profileRoutes from "./modules/profile/profile.routes";
 
 const app = express();
 
@@ -40,7 +46,13 @@ app.get("/", (req, res) => {
 // Swagger Documentation
 app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
-// Auth Routes
+// Module Routes
 app.use("/auth", authRoutes);
+app.use("/labs", labRoutes);
+app.use("/ctf", ctfRoutes);
+app.use("/leaderboard", leaderboardRoutes);
+app.use("/achievements", achievementRoutes);
+app.use("/mentor", mentorRoutes);
+app.use("/profile", profileRoutes);
 
 export default app;

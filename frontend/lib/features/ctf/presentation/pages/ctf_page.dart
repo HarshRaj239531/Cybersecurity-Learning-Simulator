@@ -3,15 +3,19 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../app/theme/app_colors.dart';
 import '../../../../shared/components/shared_components.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../providers/ctf_provider.dart';
+import '../../../../shared/providers/repository_providers.dart';
+import '../../../profile/presentation/providers/profile_provider.dart';
 
-class CtfPage extends StatefulWidget {
+class CtfPage extends ConsumerStatefulWidget {
   const CtfPage({super.key});
 
   @override
-  State<CtfPage> createState() => _CtfPageState();
+  ConsumerState<CtfPage> createState() => _CtfPageState();
 }
 
-class _CtfPageState extends State<CtfPage> {
+class _CtfPageState extends ConsumerState<CtfPage> {
   final List<Map<String, dynamic>> _challenges = [
     {
       'id': '1',
@@ -80,120 +84,127 @@ class _CtfPageState extends State<CtfPage> {
       'type': 'web',
     },
   ];
-
   String _selectedType = 'all';
 
-  List<Map<String, dynamic>> get _filtered {
-    if (_selectedType == 'all') return _challenges;
-    return _challenges.where((c) => c['type'] == _selectedType).toList();
+  List<dynamic> _getFiltered(List<dynamic> challenges) {
+    if (_selectedType == 'all') return challenges;
+    return challenges.where((c) => c['type'] == _selectedType).toList();
   }
 
   @override
   Widget build(BuildContext context) {
-    final solved = _challenges.where((c) => c['solved'] == true).length;
-    final total = _challenges.length;
-    final totalXp = _challenges
-        .where((c) => c['solved'] == true)
-        .fold<int>(0, (sum, c) => sum + (c['xp'] as int));
-
     return Scaffold(
       appBar: AppBar(
         title: const Text('CAPTURE THE FLAG', style: TextStyle(letterSpacing: 2)),
       ),
-      body: SingleChildScrollView(
-        child: Column(
-          children: [
-            // Header Stats
-            Container(
-              margin: const EdgeInsets.all(16),
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [
-                    AppColors.secondary.withOpacity(0.3),
-                    AppColors.primary.withOpacity(0.1),
-                  ],
-                ),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: AppColors.secondary.withOpacity(0.3)),
-              ),
-              child: Column(
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceAround,
-                    children: [
-                      _StatBadge(label: 'SOLVED', value: '$solved/$total', color: AppColors.primary),
-                      _StatBadge(label: 'XP EARNED', value: '$totalXp', color: AppColors.secondary),
-                      _StatBadge(label: 'RANK', value: '#42', color: AppColors.accent),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(4),
-                    child: LinearProgressIndicator(
-                      value: total > 0 ? solved / total : 0,
-                      backgroundColor: AppColors.primary.withOpacity(0.1),
-                      color: AppColors.primary,
-                      minHeight: 8,
-                    ),
-                  ),
-                ],
-              ),
-            ).animate().fadeIn(),
+      body: ref.watch(ctfChallengesProvider).when(
+        data: (challenges) {
+          final solved = challenges.where((c) => c['solved'] == true).length;
+          final total = challenges.length;
+          final totalXp = challenges
+              .where((c) => c['solved'] == true)
+              .fold<int>(0, (sum, c) => sum + (c['xpReward'] as int? ?? 0));
+          final filtered = _getFiltered(challenges);
 
-            // Category Filter
-            SizedBox(
-              height: 44,
-              child: ListView(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                scrollDirection: Axis.horizontal,
-                children: [
-                  for (final cat in ['all', 'web', 'crypto', 'forensics'])
-                    Padding(
-                      padding: const EdgeInsets.only(right: 8),
-                      child: ChoiceChip(
-                        label: Text(cat.toUpperCase()),
-                        selected: _selectedType == cat,
-                        onSelected: (v) =>
-                            setState(() => _selectedType = cat),
-                        selectedColor: AppColors.secondary.withOpacity(0.2),
-                        labelStyle: TextStyle(
-                          color: _selectedType == cat
-                              ? AppColors.secondary
-                              : AppColors.textSecondary,
-                          fontSize: 12,
-                        ),
-                        backgroundColor: const Color(0xFF1A1A1A),
-                        side: BorderSide(
-                          color: _selectedType == cat
-                              ? AppColors.secondary
-                              : const Color(0xFF333333),
+          return SingleChildScrollView(
+            child: Column(
+              children: [
+                // Header Stats
+                Container(
+                  margin: const EdgeInsets.all(16),
+                  padding: const EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [
+                        AppColors.secondary.withOpacity(0.3),
+                        AppColors.primary.withOpacity(0.1),
+                      ],
+                    ),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: AppColors.secondary.withOpacity(0.3)),
+                  ),
+                  child: Column(
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceAround,
+                        children: [
+                          _StatBadge(label: 'SOLVED', value: '$solved/$total', color: AppColors.primary),
+                          _StatBadge(label: 'XP EARNED', value: '$totalXp', color: AppColors.secondary),
+                          _StatBadge(label: 'RANK', value: '#--', color: AppColors.accent),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(4),
+                        child: LinearProgressIndicator(
+                          value: total > 0 ? solved / total : 0,
+                          backgroundColor: AppColors.primary.withOpacity(0.1),
+                          color: AppColors.primary,
+                          minHeight: 8,
                         ),
                       ),
-                    ),
-                ],
-              ),
-            ),
+                    ],
+                  ),
+                ).animate().fadeIn(),
 
-            const SizedBox(height: 12),
+                // Category Filter
+                SizedBox(
+                  height: 44,
+                  child: ListView(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    scrollDirection: Axis.horizontal,
+                    children: [
+                      for (final cat in ['all', 'web', 'crypto', 'forensics'])
+                        Padding(
+                          padding: const EdgeInsets.only(right: 8),
+                          child: ChoiceChip(
+                            label: Text(cat.toUpperCase()),
+                            selected: _selectedType == cat,
+                            onSelected: (v) =>
+                                setState(() => _selectedType = cat),
+                            selectedColor: AppColors.secondary.withOpacity(0.2),
+                            labelStyle: TextStyle(
+                              color: _selectedType == cat
+                                  ? AppColors.secondary
+                                  : AppColors.textSecondary,
+                              fontSize: 12,
+                            ),
+                            backgroundColor: const Color(0xFF1A1A1A),
+                            side: BorderSide(
+                              color: _selectedType == cat
+                                  ? AppColors.secondary
+                                  : const Color(0xFF333333),
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
 
-            // Challenge Cards
-            ListView.separated(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              itemCount: _filtered.length,
-              separatorBuilder: (_, __) => const SizedBox(height: 12),
-              itemBuilder: (context, i) {
-                return _ChallengeCard(
-                  challenge: _filtered[i],
-                  onTap: () => _showChallengeDialog(context, _filtered[i]),
-                ).animate().fadeIn(delay: Duration(milliseconds: i * 80));
-              },
+                const SizedBox(height: 12),
+
+                // Challenge Cards
+                ListView.separated(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  itemCount: filtered.length,
+                  separatorBuilder: (_, __) => const SizedBox(height: 12),
+                  itemBuilder: (context, i) {
+                    final challenge = filtered[i];
+                    return _ChallengeCard(
+                      challenge: challenge,
+                      onTap: () => _showChallengeDialog(context, challenge),
+                    ).animate().fadeIn(delay: Duration(milliseconds: i * 80));
+                  },
+                ),
+                const SizedBox(height: 24),
+              ],
             ),
-            const SizedBox(height: 24),
-          ],
-        ),
+          );
+        },
+        loading: () => const Center(child: CircularProgressIndicator()),
+        error: (err, _) => Center(child: Text('Error: $err')),
       ),
     );
   }
@@ -261,28 +272,36 @@ class _CtfPageState extends State<CtfPage> {
                     child: GlowButton(
                       text: 'SUBMIT FLAG',
                       color: color,
-                      onPressed: () {
-                        Navigator.pop(ctx);
-                        if (flagCtrl.text.toLowerCase().contains('flag{')) {
-                          setState(() {
-                            final idx = _challenges.indexWhere(
-                                (c) => c['id'] == challenge['id']);
-                            if (idx >= 0) _challenges[idx]['solved'] = true;
-                          });
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text(
-                                  '✓ Correct! +${challenge['xp']} XP'),
-                              backgroundColor: AppColors.primary,
-                            ),
+                      onPressed: () async {
+                        try {
+                          final result = await ref.read(ctfRepositoryProvider).submitFlag(
+                            challenge['id'],
+                            flagCtrl.text,
                           );
-                        } else {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text('✗ Wrong flag. Try again!'),
-                              backgroundColor: AppColors.error,
-                            ),
-                          );
+                          
+                          if (mounted) {
+                            Navigator.pop(ctx);
+                            // Refresh the challenges to show solved status
+                            ref.invalidate(ctfChallengesProvider);
+                            ref.invalidate(profileProvider); // XP changed
+
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text(
+                                    '✓ Correct! +${challenge['xpReward'] ?? 0} XP'),
+                                backgroundColor: AppColors.primary,
+                              ),
+                            );
+                          }
+                        } catch (e) {
+                          if (mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text('✗ ${e.toString().replaceAll('Exception: ', '')}'),
+                                backgroundColor: AppColors.error,
+                              ),
+                            );
+                          }
                         }
                       },
                     ),
@@ -334,7 +353,7 @@ class _ChallengeCard extends StatelessWidget {
                     style: const TextStyle(
                         fontWeight: FontWeight.bold, fontSize: 14)),
                 const SizedBox(height: 4),
-                Text(challenge['desc'] as String,
+                Text(challenge['description'] ?? '',
                     style: const TextStyle(
                         color: AppColors.textSecondary, fontSize: 12)),
               ],
@@ -364,7 +383,7 @@ class _ChallengeCard extends StatelessWidget {
                         letterSpacing: 0.5)),
               ),
               const SizedBox(height: 6),
-              Text(solved ? 'SOLVED' : '+${challenge['xp']} XP',
+              Text(solved ? 'SOLVED' : '+${challenge['xpReward'] ?? 0} XP',
                   style: TextStyle(
                       color: solved ? AppColors.primary : AppColors.textSecondary,
                       fontSize: 11,
