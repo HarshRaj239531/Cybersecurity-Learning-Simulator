@@ -1,0 +1,84 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider   = "prisma-client-js"
+  engineType = "library"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id               String            @id @default(uuid())
+  username         String            @unique
+  email            String            @unique
+  password         String
+  xp               Int               @default(0)
+  rank             Int               @default(0)
+  streak           Int               @default(0)
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+  progress         Progress[]
+  userAchievements UserAchievement[]
+  aiChats          AiChat[]
+}
+
+model Lab {
+  id          String     @id @default(uuid())
+  title       String
+  difficulty  String     // BEGINNER, INTERMEDIATE, ADVANCED
+  category    String     // Web, Network, Auth, Crypto
+  description String
+  xpReward    Int
+  progress    Progress[]
+}
+
+model Challenge {
+  id         String @id @default(uuid())
+  title      String
+  flag       String
+  difficulty String
+  xpReward   Int
+}
+
+model Progress {
+  id        String  @id @default(uuid())
+  userId    String
+  labId     String
+  completed Boolean @default(false)
+  score     Int     @default(0)
+  user      User    @relation(fields: [userId], references: [id])
+  lab       Lab     @relation(fields: [labId], references: [id])
+
+  @@unique([userId, labId])
+}
+
+model Achievement {
+  id               String            @id @default(uuid())
+  title            String
+  description      String
+  icon             String
+  userAchievements UserAchievement[]
+}
+
+model UserAchievement {
+  id            String      @id @default(uuid())
+  userId        String
+  achievementId String
+  earnedAt      DateTime    @default(now())
+  user          User        @relation(fields: [userId], references: [id])
+  achievement   Achievement @relation(fields: [achievementId], references: [id])
+
+  @@unique([userId, achievementId])
+}
+
+model AiChat {
+  id       String   @id @default(uuid())
+  userId   String
+  message  String
+  response String
+  sentAt   DateTime @default(now())
+  user     User     @relation(fields: [userId], references: [id])
+}
