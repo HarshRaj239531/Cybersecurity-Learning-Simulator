@@ -20,9 +20,10 @@ model User {
   streak           Int               @default(0)
   createdAt        DateTime          @default(now())
   updatedAt        DateTime          @updatedAt
-  progress         Progress[]
-  userAchievements UserAchievement[]
-  aiChats          AiChat[]
+  progress          Progress[]
+  challengeProgress ChallengeProgress[]
+  userAchievements  UserAchievement[]
+  aiChats           AiChat[]
 }
 
 model Lab {
@@ -36,11 +37,25 @@ model Lab {
 }
 
 model Challenge {
-  id         String @id @default(uuid())
-  title      String
-  flag       String
-  difficulty String
-  xpReward   Int
+  id               String              @id @default(uuid())
+  title            String
+  description      String              @default("")
+  type             String              @default("misc") // crypto, web, forensics, etc.
+  flag             String
+  difficulty       String
+  xpReward         Int
+  challengeProgress ChallengeProgress[]
+}
+
+model ChallengeProgress {
+  id          String    @id @default(uuid())
+  userId      String
+  challengeId String
+  completedAt DateTime  @default(now())
+  user        User      @relation(fields: [userId], references: [id])
+  challenge   Challenge @relation(fields: [challengeId], references: [id])
+
+  @@unique([userId, challengeId])
 }
 
 model Progress {

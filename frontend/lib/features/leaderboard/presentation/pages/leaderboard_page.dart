@@ -2,15 +2,17 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import '../../../../app/theme/app_colors.dart';
 import '../../../../shared/components/shared_components.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../providers/leaderboard_provider.dart';
 
-class LeaderboardPage extends StatefulWidget {
+class LeaderboardPage extends ConsumerStatefulWidget {
   const LeaderboardPage({super.key});
 
   @override
-  State<LeaderboardPage> createState() => _LeaderboardPageState();
+  ConsumerState<LeaderboardPage> createState() => _LeaderboardPageState();
 }
 
-class _LeaderboardPageState extends State<LeaderboardPage>
+class _LeaderboardPageState extends ConsumerState<LeaderboardPage>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
 
@@ -66,21 +68,29 @@ class _LeaderboardPageState extends State<LeaderboardPage>
       body: TabBarView(
         controller: _tabController,
         children: [
-          _buildRankingList(_globalRankings),
+          ref.watch(leaderboardProvider).when(
+                data: (data) => _buildRankingList(data),
+                loading: () => const Center(child: CircularProgressIndicator()),
+                error: (err, _) => Center(child: Text('Error: $err')),
+              ),
           _buildRankingList(_friendsRankings),
         ],
       ),
     );
   }
 
-  Widget _buildRankingList(List<Map<String, dynamic>> rankings) {
+  Widget _buildRankingList(List<dynamic> rankings) {
     return ListView.builder(
       padding: const EdgeInsets.all(16),
       itemCount: rankings.length,
       itemBuilder: (context, i) {
         final user = rankings[i];
-        final isMe = user['isMe'] as bool;
-        final rank = user['rank'] as int;
+        final isMe = user['isMe'] == true;
+        final rank = user['rank'] ?? (i + 1);
+        final name = user['username'] ?? user['name'] ?? 'Unknown';
+        final xp = user['xp'] ?? 0;
+        final level = user['level'] ?? (xp / 500).floor() + 1;
+        final badge = user['badge'] ?? (rank == 1 ? '🥇' : rank == 2 ? '🥈' : rank == 3 ? '🥉' : '');
 
         return Padding(
           padding: const EdgeInsets.only(bottom: 10),
@@ -112,7 +122,7 @@ class _LeaderboardPageState extends State<LeaderboardPage>
                 SizedBox(
                   width: 44,
                   child: rank <= 3
-                      ? Text(user['badge'] as String,
+                      ? Text(badge,
                           textAlign: TextAlign.center,
                           style: const TextStyle(fontSize: 22))
                       : Text('#$rank',
@@ -128,9 +138,7 @@ class _LeaderboardPageState extends State<LeaderboardPage>
                 // Avatar
                 HackerAvatar(
                   radius: 18,
-                  initials: (user['name'] as String)
-                      .substring(0, 1)
-                      .toUpperCase(),
+                  initials: name.substring(0, 1).toUpperCase(),
                   color: isMe ? AppColors.primary : AppColors.secondary,
                 ),
                 const SizedBox(width: 12),
@@ -139,7 +147,7 @@ class _LeaderboardPageState extends State<LeaderboardPage>
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text((user['name'] as String).toUpperCase(),
+                      Text(name.toUpperCase(),
                           style: TextStyle(
                               fontWeight: FontWeight.bold,
                               fontSize: 13,
@@ -147,7 +155,7 @@ class _LeaderboardPageState extends State<LeaderboardPage>
                                   ? AppColors.primary
                                   : AppColors.textPrimary,
                               letterSpacing: 0.5)),
-                      Text('Level ${user['level']}',
+                      Text('Level $level',
                           style: const TextStyle(
                               color: AppColors.textSecondary,
                               fontSize: 11)),
@@ -158,7 +166,7 @@ class _LeaderboardPageState extends State<LeaderboardPage>
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
-                    Text('${user['xp']} XP',
+                    Text('$xp XP',
                         style: TextStyle(
                             fontWeight: FontWeight.bold,
                             color: isMe

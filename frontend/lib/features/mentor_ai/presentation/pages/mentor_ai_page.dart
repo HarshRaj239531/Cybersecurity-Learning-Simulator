@@ -2,15 +2,17 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import '../../../../app/theme/app_colors.dart';
 import '../../../../shared/components/shared_components.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../../shared/providers/repository_providers.dart';
 
-class MentorAiPage extends StatefulWidget {
+class MentorAiPage extends ConsumerStatefulWidget {
   const MentorAiPage({super.key});
 
   @override
-  State<MentorAiPage> createState() => _MentorAiPageState();
+  ConsumerState<MentorAiPage> createState() => _MentorAiPageState();
 }
 
-class _MentorAiPageState extends State<MentorAiPage> {
+class _MentorAiPageState extends ConsumerState<MentorAiPage> {
   final TextEditingController _msgCtrl = TextEditingController();
   final ScrollController _scrollCtrl = ScrollController();
   bool _isTyping = false;
@@ -47,6 +49,29 @@ class _MentorAiPageState extends State<MentorAiPage> {
         'CSRF (Cross-Site Request Forgery) tricks authenticated users into executing unwanted actions.\n\n**Example:** A malicious page sends a hidden form to a bank, transferring money while you\'re logged in.\n\n**Defense:**\n• CSRF tokens in forms\n• SameSite cookie attribute\n• Verify Origin/Referer header',
   };
 
+  @override
+  void initState() {
+    super.initState();
+    _loadHistory();
+  }
+
+  void _loadHistory() async {
+    try {
+      final history = await ref.read(mentorAiRepositoryProvider).getChatHistory();
+      if (mounted) {
+        setState(() {
+          for (var chat in history) {
+            _messages.add({'role': 'user', 'text': chat['message']});
+            _messages.add({'role': 'ai', 'text': chat['response']});
+          }
+        });
+        _scrollToBottom();
+      }
+    } catch (e) {
+      // Quietly fail or show a hint
+    }
+  }
+
   void _sendMessage(String text) async {
     if (text.trim().isEmpty) return;
     _msgCtrl.clear();
@@ -55,21 +80,27 @@ class _MentorAiPageState extends State<MentorAiPage> {
       _isTyping = true;
     });
     _scrollToBottom();
-    await Future.delayed(const Duration(milliseconds: 1500));
-    if (!mounted) return;
-    final lowerText = text.toLowerCase();
-    String response = 'That\'s a great question! I\'m still learning to answer that specifically. Try asking about SQL Injection, XSS, JWT, CSRF, or request a lab suggestion.';
-    for (final key in _aiResponses.keys) {
-      if (lowerText.contains(key)) {
-        response = _aiResponses[key]!;
-        break;
+    
+    try {
+      final response = await ref.read(mentorAiRepositoryProvider).sendMessage(text);
+      if (mounted) {
+        setState(() {
+          _isTyping = false;
+          _messages.add({'role': 'ai', 'text': response});
+        });
+        _scrollToBottom();
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isTyping = false;
+          _messages.add({
+            'role': 'ai', 
+            'text': 'Agent, I am having trouble connecting to the neural network. Please check your connection.'
+          });
+        });
       }
     }
-    setState(() {
-      _isTyping = false;
-      _messages.add({'role': 'ai', 'text': response});
-    });
-    _scrollToBottom();
   }
 
   void _scrollToBottom() {

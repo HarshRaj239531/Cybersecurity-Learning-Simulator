@@ -5,16 +5,17 @@ import 'package:go_router/go_router.dart';
 import '../../../../app/theme/app_colors.dart';
 import '../../../../shared/components/shared_components.dart';
 import '../../../../shared/providers/app_providers.dart';
+import '../../../profile/presentation/providers/profile_provider.dart';
+import '../../../labs/presentation/providers/labs_provider.dart';
+import '../../../../shared/providers/repository_providers.dart';
 
 class DashboardPage extends ConsumerWidget {
   const DashboardPage({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final xp = ref.watch(xpProvider);
-    final rank = ref.watch(rankProvider);
-    final streak = ref.watch(streakProvider);
-    final level = ref.watch(levelProvider);
+    final profileAsync = ref.watch(profileProvider);
+    final labsAsync = ref.watch(labsProvider);
 
     return Scaffold(
       appBar: AppBar(
@@ -36,111 +37,124 @@ class DashboardPage extends ConsumerWidget {
           ),
           GestureDetector(
             onTap: () => context.push('/profile'),
-            child: const HackerAvatar(radius: 16, initials: 'NH'),
+            child: profileAsync.when(
+              data: (profile) => HackerAvatar(
+                radius: 16,
+                initials: (profile['username'] ?? 'AG').substring(0, 1).toUpperCase(),
+              ),
+              loading: () => const HackerAvatar(radius: 16, initials: '..'),
+              error: (_, __) => const HackerAvatar(radius: 16, initials: '??'),
+            ),
           ),
           const SizedBox(width: 16),
         ],
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Stats Row
-            Row(
+      body: profileAsync.when(
+        data: (profile) {
+          final xp = profile['xp'] ?? 0;
+          final rank = profile['rank'] ?? '--';
+          final streak = profile['streak'] ?? 0;
+          final level = (xp / 500).floor() + 1;
+          
+          return SingleChildScrollView(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                XPCard(
-                    label: 'XP',
-                    value: '$xp',
-                    color: AppColors.primary,
-                    icon: Icons.bolt),
-                const SizedBox(width: 10),
-                XPCard(
-                    label: 'RANK',
-                    value: '#$rank',
-                    color: AppColors.secondary,
-                    icon: Icons.military_tech_outlined),
-                const SizedBox(width: 10),
-                XPCard(
-                    label: 'STREAK',
-                    value: '$streak',
-                    color: AppColors.accent,
-                    icon: Icons.local_fire_department_outlined),
-                const SizedBox(width: 10),
-                XPCard(
-                    label: 'LEVEL',
-                    value: '$level',
-                    color: Colors.orange,
-                    icon: Icons.shield_outlined),
-              ],
-            ).animate().fadeIn(delay: 100.ms),
+                // Stats Row
+                Row(
+                  children: [
+                    XPCard(
+                        label: 'XP',
+                        value: '$xp',
+                        color: AppColors.primary,
+                        icon: Icons.bolt),
+                    const SizedBox(width: 10),
+                    XPCard(
+                        label: 'RANK',
+                        value: '#$rank',
+                        color: AppColors.secondary,
+                        icon: Icons.military_tech_outlined),
+                    const SizedBox(width: 10),
+                    XPCard(
+                        label: 'STREAK',
+                        value: '$streak',
+                        color: AppColors.accent,
+                        icon: Icons.local_fire_department_outlined),
+                    const SizedBox(width: 10),
+                    XPCard(
+                        label: 'LEVEL',
+                        value: '$level',
+                        color: Colors.orange,
+                        icon: Icons.shield_outlined),
+                  ],
+                ).animate().fadeIn(delay: 100.ms),
 
-            const SizedBox(height: 24),
+                const SizedBox(height: 24),
 
-            // XP Progress Bar
-            CyberCard(
-              borderColor: AppColors.primary.withOpacity(0.3),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                // XP Progress Bar
+                CyberCard(
+                  borderColor: AppColors.primary.withOpacity(0.3),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('LEVEL $level PROGRESS',
-                          style: const TextStyle(
-                              color: AppColors.textSecondary,
-                              fontSize: 11,
-                              letterSpacing: 2)),
-                      Text('$xp / ${level * 500} XP',
-                          style: const TextStyle(
-                              color: AppColors.primary, fontSize: 12)),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text('LEVEL $level PROGRESS',
+                              style: const TextStyle(
+                                  color: AppColors.textSecondary,
+                                  fontSize: 11,
+                                  letterSpacing: 2)),
+                          Text('$xp / ${level * 500} XP',
+                              style: const TextStyle(
+                                  color: AppColors.primary, fontSize: 12)),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(4),
+                        child: LinearProgressIndicator(
+                          value: (xp % 500) / 500,
+                          backgroundColor: AppColors.primary.withOpacity(0.1),
+                          color: AppColors.primary,
+                          minHeight: 8,
+                        ),
+                      ),
                     ],
                   ),
-                  const SizedBox(height: 12),
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(4),
-                    child: LinearProgressIndicator(
-                      value: (xp % 500) / 500,
-                      backgroundColor: AppColors.primary.withOpacity(0.1),
-                      color: AppColors.primary,
-                      minHeight: 8,
-                    ),
-                  ),
-                ],
-              ),
-            ).animate().fadeIn(delay: 200.ms),
+                ).animate().fadeIn(delay: 200.ms),
 
-            const SizedBox(height: 24),
+                const SizedBox(height: 24),
 
-            // Active Missions
-            const SectionHeader(title: 'ACTIVE MISSIONS', trailing: 'VIEW ALL'),
-            const SizedBox(height: 12),
-            _MissionCard(
-              title: 'SQL Injection: Level 1',
-              subtitle: 'Learn to extract database data',
-              progress: 0.65,
-              xp: 250,
-              difficulty: 'BEGINNER',
-              onTap: () => context.push('/lab/sql-injection'),
-            ).animate().fadeIn(delay: 300.ms),
-            const SizedBox(height: 12),
-            _MissionCard(
-              title: 'XSS Attack Basics',
-              subtitle: 'Understand DOM manipulation attacks',
-              progress: 0.2,
-              xp: 250,
-              difficulty: 'BEGINNER',
-              onTap: () => context.push('/lab/xss'),
-            ).animate().fadeIn(delay: 400.ms),
-            const SizedBox(height: 12),
-            _MissionCard(
-              title: 'Network Sniffing',
-              subtitle: 'Intercept and analyze packets',
-              progress: 0.0,
-              xp: 500,
-              difficulty: 'INTERMEDIATE',
-              onTap: () {},
-            ).animate().fadeIn(delay: 500.ms),
+                // Active Missions
+                const SectionHeader(title: 'ACTIVE MISSIONS', trailing: 'VIEW ALL'),
+                const SizedBox(height: 12),
+                labsAsync.when(
+                  data: (labs) {
+                    final activeLabs = labs.take(3).toList();
+                    return Column(
+                      children: [
+                        for (int i = 0; i < activeLabs.length; i++)
+                          Padding(
+                            padding: const EdgeInsets.only(bottom: 12),
+                            child: _MissionCard(
+                              title: activeLabs[i]['title'],
+                              subtitle: activeLabs[i]['description'],
+                              progress: (activeLabs[i]['progress'] ?? 0).toDouble(),
+                              xp: activeLabs[i]['xpReward'],
+                              difficulty: activeLabs[i]['difficulty'],
+                              onTap: () => context.push('/lab/sql-injection'),
+                            ).animate().fadeIn(delay: Duration(milliseconds: 300 + (i * 100))),
+                          ),
+                      ],
+                    );
+                  },
+                  loading: () => const Center(child: CircularProgressIndicator()),
+                  error: (err, _) => Text('Error loading labs: $err'),
+                ),
+
+                const SizedBox(height: 12),
 
             const SizedBox(height: 24),
 
@@ -248,8 +262,12 @@ class DashboardPage extends ConsumerWidget {
             const SizedBox(height: 32),
           ],
         ),
-      ),
-    );
+      );
+    },
+    loading: () => const Center(child: CircularProgressIndicator()),
+    error: (err, _) => Center(child: Text('Error: $err')),
+  ),
+);
   }
 }
 

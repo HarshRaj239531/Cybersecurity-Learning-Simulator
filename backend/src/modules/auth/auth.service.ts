@@ -19,7 +19,7 @@ export class AuthService {
             ...data,
             password: hashedPassword,
         });
-        const token = signToken({ id: user.id });
+        const token = signToken({ userId: user.id });
         return { user, token };
     }
 
@@ -30,7 +30,7 @@ export class AuthService {
         const isMatch = await comparePassword(data.password, user.password);
         if (!isMatch) throw new Error('Invalid credentials');
 
-        const token = signToken({ id: user.id });
+        const token = signToken({ userId: user.id });
         return { user, token };
     }
 }
