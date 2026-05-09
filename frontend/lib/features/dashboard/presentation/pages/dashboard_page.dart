@@ -237,28 +237,10 @@ class DashboardPage extends ConsumerWidget {
 
             const SizedBox(height: 24),
 
-            // Recent Lab Activity
+            // Recent Activity — dynamic from backend
             const SectionHeader(title: 'RECENT ACTIVITY'),
             const SizedBox(height: 12),
-            _ActivityItem(
-                icon: Icons.check_circle,
-                text: 'Completed SQLi Level 1',
-                time: '2h ago',
-                xp: '+250 XP',
-                color: AppColors.primary),
-            _ActivityItem(
-                icon: Icons.play_arrow,
-                text: 'Started XSS Basics',
-                time: '5h ago',
-                xp: '+50 XP',
-                color: AppColors.accent),
-            _ActivityItem(
-                icon: Icons.emoji_events,
-                text: 'Earned "Rookie Hacker" badge',
-                time: '1d ago',
-                xp: '+100 XP',
-                color: Colors.orange),
-
+            _buildRecentActivity(profile),
             const SizedBox(height: 32),
           ],
         ),
@@ -268,6 +250,77 @@ class DashboardPage extends ConsumerWidget {
     error: (err, _) => Center(child: Text('Error: $err')),
   ),
 );
+  }
+
+  static Widget _buildRecentActivity(Map<String, dynamic> profile) {
+    final List<Map<String, dynamic>> activities = [];
+
+    // Completed labs
+    final progress = profile['progress'] as List? ?? [];
+    for (final p in progress) {
+      final lab = p['lab'];
+      if (lab == null) continue;
+      activities.add({
+        'icon': Icons.check_circle,
+        'text': 'Completed ${lab['title']}',
+        'time': _formatTime(p['userId'] != null ? DateTime.now() : DateTime.now()),
+        'xp': '+${lab['xpReward']} XP',
+        'color': AppColors.primary,
+        'sortKey': 0,
+      });
+    }
+
+    // Solved CTF challenges
+    final ctfProgress = profile['challengeProgress'] as List? ?? [];
+    for (final cp in ctfProgress) {
+      final challenge = cp['challenge'];
+      if (challenge == null) continue;
+      activities.add({
+        'icon': Icons.flag,
+        'text': 'Solved CTF: ${challenge['title']}',
+        'time': 'Recently',
+        'xp': '+${challenge['xpReward']} XP',
+        'color': AppColors.secondary,
+        'sortKey': 1,
+      });
+    }
+
+    if (activities.isEmpty) {
+      return Padding(
+        padding: const EdgeInsets.symmetric(vertical: 20),
+        child: Center(
+          child: Column(
+            children: [
+              Icon(Icons.inbox_outlined,
+                  color: AppColors.textHint.withOpacity(0.5), size: 40),
+              const SizedBox(height: 8),
+              const Text('No activity yet — start a lab to begin!',
+                  style: TextStyle(color: AppColors.textHint, fontSize: 12)),
+            ],
+          ),
+        ),
+      );
+    }
+
+    return Column(
+      children: activities
+          .take(5)
+          .map((a) => _ActivityItem(
+                icon: a['icon'] as IconData,
+                text: a['text'] as String,
+                time: a['time'] as String,
+                xp: a['xp'] as String,
+                color: a['color'] as Color,
+              ))
+          .toList(),
+    );
+  }
+
+  static String _formatTime(DateTime dt) {
+    final diff = DateTime.now().difference(dt);
+    if (diff.inMinutes < 60) return '${diff.inMinutes}m ago';
+    if (diff.inHours < 24) return '${diff.inHours}h ago';
+    return '${diff.inDays}d ago';
   }
 }
 
