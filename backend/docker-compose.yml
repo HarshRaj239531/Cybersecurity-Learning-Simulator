@@ -8,8 +8,10 @@ services:
       - JWT_SECRET=your_secret_key
       - REDIS_URL=redis://redis:6379
     depends_on:
-      - db
-      - redis
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
 
   db:
     image: postgres:16-alpine
@@ -22,6 +24,11 @@ services:
       - '5433:5432'
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U cyberuser -d cyberverse"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
 
   redis:
     image: redis:7-alpine
