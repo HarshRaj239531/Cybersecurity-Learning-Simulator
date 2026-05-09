@@ -1,6 +1,12 @@
 #!/bin/sh
 
-echo "[STARTUP] Applying database migrations..."
+# Fail immediately if DATABASE_URL is not set
+if [ -z "$DATABASE_URL" ]; then
+  echo "[ERROR] DATABASE_URL is not set. On Railway: go to your service Variables tab and add DATABASE_URL = \${{Postgres.DATABASE_URL}}"
+  exit 1
+fi
+
+echo "[STARTUP] DATABASE_URL is set. Applying database migrations..."
 node -e "
 const { Pool } = require('pg');
 const fs = require('fs');
