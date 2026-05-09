@@ -1,9 +1,6 @@
 import { prisma } from "../../lib/prisma";
 
 export class AuthRepository {
-  findByUsername(username: any) {
-    throw new Error("Method not implemented.");
-  }
   async createUser(data: any) {
     return prisma.user.create({
       data: {

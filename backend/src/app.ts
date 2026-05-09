@@ -4,6 +4,9 @@ import helmet from "helmet";
 import cookieParser from "cookie-parser";
 import rateLimit from "express-rate-limit";
 import pino from "pino-http";
+import swaggerUi from "swagger-ui-express";
+import { swaggerSpec } from "./lib/swagger";
+import authRoutes from "./modules/auth/auth.routes";
 
 const app = express();
 
@@ -34,8 +37,10 @@ app.get("/", (req, res) => {
   res.json({ message: "CyberVerse API is online" });
 });
 
+// Swagger Documentation
+app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
+
 // Auth Routes
-import authRoutes from "./modules/auth/auth.routes";
 app.use("/auth", authRoutes);
 
 export default app;
