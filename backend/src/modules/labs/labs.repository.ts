@@ -16,7 +16,12 @@ export class LabsRepository {
     });
   }
 
-  async updateProgress(userId: string, labId: string, completed: boolean, score: number) {
+  async updateProgress(
+    userId: string,
+    labId: string,
+    completed: boolean,
+    score: number,
+  ) {
     const existing = await prisma.progress.findUnique({
       where: { userId_labId: { userId, labId } },
     });
